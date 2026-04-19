@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electoral Analytics Matrix</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">⚡ ElectoMatrix</div>
+    <nav>
+      <a href="/" class="nav-link {% if request.endpoint=='main.dashboard' %}active{% endif %}">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a href="/candidates" class="nav-link {% if request.endpoint=='main.candidates' %}active{% endif %}">
+        <span class="icon">👤</span> Candidates
+      </a>
+      <a href="/forecast" class="nav-link {% if request.endpoint=='main.forecast' %}active{% endif %}">
+        <span class="icon">🔮</span> PoW Forecast
+      </a>
+    </nav>
+    <div class="sidebar-footer">v1.0 · Python + Flask</div>
+  </aside>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>PoW Scenario Forecast</h1>
+  <p>Probability of Win across 4 turnout and swing-voter scenarios</p>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+  <label style="margin:0;width:auto;font-size:13px">Constituency:</label>
+  <select class="constituency-select"
+          onchange="location.href='/forecast?constituency_id='+this.value">
+    {% for c in constituencies %}
+    <option value="{{ c.id }}"
+      {% if selected and selected.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+{% if scenarios %}
+<div class="card">
+  <div class="card-title">Scenario Comparison — Probability of Win (%)</div>
+  <canvas id="scenarioChart" style="max-height:320px"></canvas>
+</div>
+
+<div class="card">
+  <div class="card-title">Scenario Breakdown Table</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Candidate</th>
+        <th>Base (65%)</th>
+        <th>High Turnout (80%)</th>
+        <th>Low Turnout (50%)</th>
+        <th>Anti-Wave (70%)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in candidates %}
+    <tr>
+      <td style="font-weight:500;color:{{ c.color }}">{{ c.name }}</td>
+      <td>{{ scenarios.base.get(c.name, 0) }}%</td>
+      <td>{{ scenarios.high_turnout.get(c.name, 0) }}%</td>
+      <td>{{ scenarios.low_turnout.get(c.name, 0) }}%</td>
+      <td>{{ scenarios.anti_wave.get(c.name, 0) }}%</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const scenarios = {{ scenarios|tojson }};
+const candidateNames = {{ candidates|map(attribute='name')|list|tojson }};
+const colors = {{ candidates|map(attribute='color')|list|tojson }};
+const labels = ['Base (65%)', 'High Turnout (80%)', 'Low Turnout (50%)', 'Anti-Wave (70%)'];
+const scenarioKeys = ['base', 'high_turnout', 'low_turnout', 'anti_wave'];
+const datasets = candidateNames.map((name, i) => ({
+  label: name,
+  data: scenarioKeys.map(k => scenarios[k]?.[name] || 0),
+  backgroundColor: colors[i] + 'cc',
+  borderColor: colors[i],
+  borderWidth: 1,
+  borderRadius: 4
+}));
+new Chart(document.getElementById('scenarioChart'), {
+  type: 'bar',
+  data: { labels, datasets },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#e8e8f0' } } },
+    scales: {
+      x: { ticks: { color: '#8888aa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: {
+        ticks: { color: '#8888aa', callback: v => v + '%' },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        max: 100
+      }
+    }
+  }
+});
+</script>
+
+{% else %}
+<div class="card" style="text-align:center;padding:48px">
+  <p style="color:var(--muted)">
+    No candidates found. <a href="/candidates" style="color:#a78bfa">Add some</a>
+  </p>
+</div>
+{% endif %}
+{% endblock %}

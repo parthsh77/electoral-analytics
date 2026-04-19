@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>📊 Electoral Analytics Dashboard</h1>
+  <p>Multi-dimensional comparative matrix & Probability of Win engine</p>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+  <label style="margin:0;width:auto;font-size:13px">Constituency:</label>
+  <select class="constituency-select" onchange="location.href='/?constituency_id='+this.value">
+    {% for c in constituencies %}
+    <option value="{{ c.id }}" {% if selected and selected.id==c.id %}selected{% endif %}>{{ c.name }}, {{ c.state }}</option>
+    {% endfor %}
+  </select>
+  <a href="/candidates" class="btn btn-primary" style="padding:7px 14px;font-size:13px;text-decoration:none">+ Add Candidate</a>
+</div>
+
+{% if not candidates %}
+<div class="card" style="text-align:center;padding:48px">
+  <p style="color:var(--muted);font-size:16px">No candidates yet. <a href="/candidates" style="color:#a78bfa">Add candidates →</a></p>
+</div>
+{% else %}
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-label">Candidates</div><div class="stat-value" style="color:#a78bfa">{{ candidates|length }}</div></div>
+  <div class="stat-card"><div class="stat-label">Top PoW</div>
+    <div class="stat-value" style="color:#34d399">{{ (pow_data.values()|list|sort|last)|round(1) }}%</div></div>
+  <div class="stat-card"><div class="stat-label">Constituency</div><div class="stat-value" style="font-size:18px">{{ selected.name if selected else '-' }}</div></div>
+  <div class="stat-card"><div class="stat-label">State</div><div class="stat-value" style="font-size:18px">{{ selected.state if selected else '-' }}</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Candidate Comparison Matrix</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Factor</th><th>Weight</th>
+        {% for c in candidates %}<th>{{ c.name }}<br><span style="font-weight:400;text-transform:none;color:var(--muted)">{{ c.party }}</span></th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% set factors = [
+        ('incumbency_score','Incumbency Effect','15%'),
+        ('party_strength','Party Strength','20%'),
+        ('past_work_score','Past Work (OSINT)','20%'),
+        ('personal_base','Personal Base','15%'),
+        ('caste_base','Caste/Religious Base','20%'),
+        ('digital_sentiment','Digital Sentiment','10%'),
+      ] %}
+      {% for attr, label, weight in factors %}
+      <tr>
+        <td style="font-weight:500">{{ label }}</td>
+        <td><span class="badge badge-neu">{{ weight }}</span></td>
+        {% for c in candidates %}
+        {% set val = c[attr] if c[attr] is defined else c.__getattribute__(attr) %}
+        {% set score = c|attr(attr) %}
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill" style="width:{{ score }}%;background:{{ c.color }}"></div></div>
+            <span class="score-text">{{ score|int }}</span>
+          </div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      <tr style="background:rgba(255,255,255,0.02)">
+        <td style="font-weight:600">Weighted Score</td><td></td>
+        {% for c in candidates %}
+        <td style="font-weight:600;color:{{ c.color }}">{{ scores[c.name] }}</td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section-row">
+  <div class="card">
+    <div class="card-title">Probability of Win (PoW)</div>
+    {% for name, pct in pow_data.items()|sort(attribute='1', reverse=True) %}
+    {% set cand = candidates|selectattr('name','eq',name)|first %}
+    <div class="pow-bar-wrap">
+      <div class="pow-label">{{ name }}</div>
+      <div class="pow-track"><div class="pow-fill" style="width:{{ pct }}%;background:{{ cand.color if cand else '#7c3aed' }}"></div></div>
+      <div class="pow-pct" style="color:{{ cand.color if cand else '#7c3aed' }}">{{ pct }}%</div>
+    </div>
+    {% endfor %}
+    <canvas id="powChart" style="margin-top:16px;max-height:180px"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Strategic Gaps (top weaknesses per candidate)</div>
+    {% for cand_name, gap_list in gaps.items() %}
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">{{ cand_name }}</div>
+      {% for factor, gap in gap_list %}
+      <div class="gap-item">
+        <span class="gap-name">{{ factor.replace('_',' ')|title }}</span>
+        — behind by <span style="color:#f87171">{{ gap }}</span> pts
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <a href="/forecast" class="btn btn-primary" style="margin-top:8px;text-decoration:none;display:inline-block">View Scenario Forecast →</a>
+  </div>
+</div>
+
+<script>
+const powData = {{ pow_data|tojson }};
+const candidates = {{ candidates|map(attribute='name')|list|tojson }};
+const colors = {{ candidates|map(attribute='color')|list|tojson }};
+const ctx = document.getElementById('powChart').getContext('2d');
+new Chart(ctx, {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(powData),
+    datasets: [{ data: Object.values(powData), backgroundColor: colors, borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: {
+    plugins: { legend: { labels: { color: '#e8e8f0', font: { size: 12 } } } },
+    cutout: '65%'
+  }
+});
+</script>
+{% endif %}
+{% endblock %}
