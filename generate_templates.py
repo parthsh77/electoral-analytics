@@ -209,4 +209,4 @@ with open("templates/candidates.html", "w", encoding="utf-8") as f:
 with open("templates/forecast.html", "w", encoding="utf-8") as f:
     f.write(forecast_html)
 
-print("Templates created successfully!")
+print("Templates created successfully!")# 1. Generate templates
